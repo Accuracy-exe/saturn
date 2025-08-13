@@ -1,31 +1,11 @@
 import discord
 import dotenv
 import os
-
+import ItemCreation
+import database as db
 dotenv.load_dotenv()
 
-from pymongo.mongo_client import MongoClient
-from pymongo.server_api import ServerApi
 
-uri = str(os.getenv("MONGO_URI"))
-
-# Create a new client and connect to the server
-client = MongoClient(uri, server_api=ServerApi('1'))
-
-# Send a ping to confirm a successful connection
-try:
-    client.admin.command('ping')
-    print("Pinged cluster. Successfully connected to MongoDB!")
-except Exception as e:
-    print(e)
-
-
-def initCollection(guild_id):
-    db = client["Saturn"]
-    collection_name = str(guild_id)
-    if collection_name not in db.list_collection_names():
-        db.create_collection(collection_name)
-    return db[collection_name]
 
 
 
@@ -42,7 +22,7 @@ async def on_ready():
 @bot.event
 async def on_guild_join(guild):
     guild_id = guild.id
-    initCollection(guild_id)
+    db.initCollection(guild_id)
     print(f"Created collection for guild: {guild_id}")
 
 @bot.command(name="latency", description="Check Latency")
@@ -56,7 +36,19 @@ async def hello(ctx: discord.ApplicationContext):
 @bot.slash_command(name="add", description="Create a new Work Item")
 async def add(
     ctx: discord.ApplicationContext,
-    item: discord.Option(str, choices=['epic','user story','bug','task'])
+    item: discord.Option(str, choices=['Epic','User Story','Bug','Task'])
     ):
-    pass
+    if item not in ['Epic','User Story','Bug','Task']:
+        await ctx.respond("Invalid option chosen :/")
+        return
+    title = f"Create a new Work Item: {item}"
+    if item == "Epic":
+        form = ItemCreation.EpicCreator(title=title,gid=ctx.guild.id)
+    if item == "User Story":
+        form = ItemCreation.StoryCreator(title=title,gid=ctx.guild.id)
+    if item == "Bug":
+        form = ItemCreation.BugCreator(title=title,gid=ctx.guild.id)
+    if item == "Task":
+        form = ItemCreation.TaskCreator(title=title,gid=ctx.guild.id)
+    await ctx.send_modal(form)
 bot.run(tkn)
